@@ -1,43 +1,65 @@
 from fastapi import Depends, HTTPException, APIRouter
 from sqlalchemy.orm import Session
-from db import get_db
+from db import get_db, SessionLocal
 from models import User
-from schemas import UserSchema, UserCreate
-
+from schemas import UserSchema, user_read
+from typing import List
 router = APIRouter()
 
-@router.post("/users/", response_model=UserSchema)
-async def create_user(user: UserCreate,db: Session = Depends(get_db)):
-    db_user = User(name=user.name, email=user.email, password=user.password)
-    db.add(db_user)
+@router.get("/all-users", response_model=List[user_read])
+async def get_all_Users(db: SessionLocal = Depends(get_db)):
+    query = db.query(User).all()
+    return query
+
+
+@router.get("/user/{id}", response_model=user_read)
+async def get_User(id:int,
+                      db: SessionLocal = Depends(get_db)):
+    query = db.query(User).filter(User.id == id).first()
+    if query is None:
+        return "Comment not found"
+    else:
+        return query
+
+
+@router.post("/new-User", response_model=user_read)
+async def add_User(schema: UserSchema,
+                      db: SessionLocal = Depends(get_db)):
+    model = User()
+    model.name = schema.name
+    model.password = schema.password
+    model.email = schema.email
+
+    db.add(model)
     db.commit()
-    db.refresh(db_user)
-    return db_user
+    return model
 
+@router.put("/edit-User", response_model=user_read)
+async def edit_User(id:int,
+                    schema: UserSchema,
+                    db: SessionLocal = Depends(get_db),
+                    ):
 
+    model = db.query(User).filter(User.id == id).first()
 
-@router.get("/users/", response_model=list[UserSchema])
-async def get_users(db=Depends(get_db)):
-    users = db.query(User).all()
-    return users
+    if model is None:
+        raise HTTPException(status_code=404, detail="Not Found")
+    else:
+        model_ = User()
+        model_.id = id
+        model_.name = schema.name
+        model_.password = schema.password
+        model_.email = schema.email
 
+        db.add(model)
+        db.commit()
 
+        return model_
+@router.delete("/User/{id}")
+async def del_User(id: int,
+                      db: SessionLocal = Depends(get_db)):
+    comment = db.query(User).filter(User.id == id).first()
 
-@router.get("/users/{user_id}", response_model=UserSchema)
-async def get_user(user_id: int, db=Depends(get_db)):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
-
-
-
-@router.delete("/users/{user_id}")
-async def delete_user(user_id: int, db=Depends(get_db)):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    db.delete(user)
+    db.delete(comment)
     db.commit()
-    return {"message": "User deleted successfully"}
-
+    return "Successfully deleted"

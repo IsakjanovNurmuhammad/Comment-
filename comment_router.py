@@ -1,41 +1,71 @@
 from fastapi import Depends, HTTPException, APIRouter
 
-from db import get_db
+from db import get_db, SessionLocal
 from models import Comment, User
-from schemas import CommentSchema, CommentCreate
+from schemas import CommentSchema, comment_read
+from typing import List
 
 router = APIRouter()
 
-@router.get("/comments/", response_model=list[CommentSchema])
-async def get_users(db=Depends(get_db)):
-    comm = db.query(Comment).all()
-    return comm
 
-@router.post("/comments/", response_model=CommentSchema)
-async def create_comment(comment: CommentCreate, db=Depends(get_db)):
-    db_comment = Comment(comment=comment.comment, user_id=comment.user_id)
-    db.add(db_comment)
-    db.commit()
-    db.refresh(db_comment)
-    return db_comment
+@router.get("/all-comments", response_model=List[comment_read])
+async def get_all_comments(db: SessionLocal = Depends(get_db)):
+    query = db.query(Comment).all()
+    return query
 
 
+@router.get("/comment/{id}", response_model=comment_read)
+async def get_comment(id:int,
+                      db: SessionLocal = Depends(get_db)):
+    query = db.query(Comment).filter(Comment.id == id).first()
+    if query is None:
+        raise HTTPException(status_code=404, detail="Not Found")
+    else:
+        return query
 
-@router.get("/users/{user_id}/comments/", response_model=list[CommentSchema])
-async def get_comments_by_user(user_id: int, db=Depends(get_db)):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
+
+@router.post("/new-comment", response_model=comment_read)
+async def add_comment(schema: CommentSchema,
+                      db: SessionLocal = Depends(get_db)):
+    model = Comment()
+    query = db.query(User).filter(User.id == schema.user_id).first()
+    if query is None:
         raise HTTPException(status_code=404, detail="User not found")
-    return user.comments
+    else:
+        model.comment = schema.comment
+        model.user_id = schema.user_id
+
+        db.add(model)
+        db.commit()
+        return model
 
 
+@router.put("/edit-comment", response_model=comment_read)
+async def edit_comment(id:int,
+                       schema: CommentSchema,
+                       db: SessionLocal = Depends(get_db),
+                       ):
 
-@router.put("/comments/{comment_id}")
-async def update_comment(comment_id: int, comment: str, db=Depends(get_db)):
-    db_comment = db.query(Comment).filter(Comment.id == comment_id).first()
-    if not db_comment:
-        raise HTTPException(status_code=404, detail="Comment not found")
-    db_comment.comment = comment
-    db.commit()
-    db.refresh(db_comment)
-    return db_comment
+    model = db.query(Comment).filter(Comment.id == id).first()
+
+    if model is None:
+        raise HTTPException(status_code=404, detail="Not found")
+    else:
+        model.comment = schema.comment
+
+        db.add(model)
+        db.commit()
+
+        return model
+
+
+@router.delete("/del-comment/{id}")
+async def del_comment(id: int,
+                      db: SessionLocal = Depends(get_db)):
+    comment = db.query(Comment).filter(Comment.id == id).first()
+    if comment is None:
+        raise HTTPException(status_code=404, detail="Not found")
+    else:
+        db.delete(comment)
+        db.commit()
+        return "Successfully deleted"

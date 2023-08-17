@@ -1,10 +1,9 @@
-from fastapi import FastAPI
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 
 
-SQLALCHEMY_DATABASE_URL = "postgresql://postgres:papa69@localhost:5432/TwitterX"
+SQLALCHEMY_DATABASE_URL = "postgresql://postgres:Mum1989$@localhost:5432/messsenger"
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
