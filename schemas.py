@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-
+from fastapi import UploadFile, File
 
 class UserSchema(BaseModel):
     name: str
@@ -22,3 +22,6 @@ class comment_read(BaseModel):
     id: int
     user_id: int
     comment: str
+    image: int
+    file_path: str
+    file_name: str
