@@ -1,8 +1,5 @@
-import json
-
 from fastapi import Depends, HTTPException, APIRouter, UploadFile, File
 from secrets import token_hex
-from fastapi.responses import FileResponse
 from db import get_db, SessionLocal
 from models import Comment, User, Comment_image
 from schemas import CommentSchema, comment_read
@@ -12,7 +9,7 @@ router = APIRouter()
 path = r"C:\Users\Mr_IT\PycharmProjects\pythonProject3"
 
 
-@router.get("/all-comments", )
+@router.get("/all-comments", response_model=List[comment_read] )
 async def get_all_comments(db: SessionLocal = Depends(get_db)):
     comments = db.query(Comment).all()
     return comments
@@ -55,27 +52,6 @@ async def add_comment(comment: CommentSchema,
         db.commit()
         return model
 
-@router.put("/add-image")
-async def add_image(comment_id: int,
-                    image: UploadFile = File(...),
-                    db: SessionLocal = Depends(get_db)):
-    query = db.query(Comment).filter(Comment.id == comment_id).first
-    if query is None:
-        raise HTTPException(status_code=404, detail="Comment not found.")
-    file_ext = image.filename.split(".").pop()
-    file_name = token_hex(10)
-    file_path = f"{file_name}.{file_ext}"
-    with open(file_path, "wb") as f:
-        content = await image.read()
-        f.write(content)
-    model = Comment_image()
-    model.comment_id = comment_id
-    model.file_path = file_path
-    model.file_name =file_name
-
-    db.add(model)
-    db.commit()
-    return "Successfully added"
 
 
 @router.put("/edit-comment", response_model=comment_read)
